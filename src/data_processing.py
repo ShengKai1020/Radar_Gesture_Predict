@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 
 # 資料夾路徑
-DATA_DIR = 'data/'
-PROCESSED_DATA_FILE = 'processed_data.npz'  # 儲存處理後數據的檔案名稱
+DATA_DIR = 'data/'  # 原始數據所在的資料夾
+PROCESSED_DATA_DIR = os.path.join(DATA_DIR, 'processed_data')  # 處理後數據儲存的資料夾
+PROCESSED_DATA_FILE = os.path.join(PROCESSED_DATA_DIR, 'processed_data.npz')  # 儲存處理後數據的檔案名稱和路徑
 WINDOW_SIZE = 70  # 設定frame數量的窗口大小
 
 # 定義手勢類型
@@ -21,9 +22,22 @@ def load_h5_file(file_path):
         tuple: DS1 數據和 LABEL 數據
     """
     with h5py.File(file_path, 'r') as f:
-        ds1 = np.array(f['DS1'])
+        ds1 = np.array(f['DS1'], dtype=np.float32)  # 轉換為 float32 以避免溢出
         label = np.array(f['LABEL'])  # 修改這裡的名稱為 'LABEL'
     return ds1, label
+
+def standardize_feature_map(feature_map):
+    """
+    標準化 feature map 的數據，使其均值為0，標準差為1
+    Args:
+        feature_map (np.array): 原始 feature map 數據
+    Returns:
+        np.array: 標準化後的 feature map 數據
+    """
+    mean = np.mean(feature_map, axis=(1, 2), keepdims=True)  # 計算每個frame的均值
+    std = np.std(feature_map, axis=(1, 2), keepdims=True)    # 計算每個frame的標準差
+    standardized_map = (feature_map - mean) / (std + 1e-6)   # 避免除以0的情況
+    return standardized_map
 
 def generate_ground_truth(label, gesture_type, total_classes):
     """
@@ -44,16 +58,6 @@ def generate_ground_truth(label, gesture_type, total_classes):
     
     start_idx = gesture_indices[0]
     end_idx = gesture_indices[-1]
-
-    # # 生成平滑的 ground truth，使用高斯過濾
-    # ground_truth[start_idx:end_idx+1, gesture_type] = gaussian_filter1d(
-    #     np.ones(end_idx - start_idx + 1), sigma=(end_idx - start_idx) / 6)
-
-    # # 背景分數是 1 減去手勢分數
-    # ground_truth[:, 0] = 1 - ground_truth[:, gesture_type]
-
-
-
 
     # 生成對稱的高斯分佈，從 0 上升到 1 再下降到 0
     length = end_idx - start_idx + 1
@@ -76,6 +80,10 @@ def process_data():
     """
     處理所有資料夾內的 .h5 檔案，生成包含ground_truth的處理後數據
     """
+    # 確保儲存處理後數據的資料夾存在
+    if not os.path.exists(PROCESSED_DATA_DIR):
+        os.makedirs(PROCESSED_DATA_DIR)
+
     all_features = []
     all_labels = []
     all_ground_truths = []
@@ -89,6 +97,10 @@ def process_data():
                 # 載入 .h5 檔案
                 ds1, label = load_h5_file(file_path)
 
+                # 對 RDI 和 PHD map 進行標準化
+                ds1[0] = standardize_feature_map(ds1[0])  # 標準化 RDI map
+                ds1[1] = standardize_feature_map(ds1[1])  # 標準化 PHD map
+
                 # 生成 ground truth
                 ground_truth = generate_ground_truth(label, gesture_idx, len(gesture_types))
 
@@ -96,14 +108,6 @@ def process_data():
                 all_features.append(ds1)
                 all_labels.append(label)
                 all_ground_truths.append(ground_truth)
-
-                # 驗證生成的 ground truth
-                # plt.figure(figsize=(10, 2))
-                # plt.title(f'Ground Truth for {gesture_type} in {file_name}')
-                # plt.plot(ground_truth[:, gesture_idx], label=gesture_type)
-                # plt.plot(ground_truth[:, 0], label='background')
-                # plt.legend()
-                # plt.show()
 
     # 將所有處理後的數據儲存成一個檔案
     np.savez(PROCESSED_DATA_FILE, features=np.array(all_features), labels=np.array(all_labels), ground_truths=np.array(all_ground_truths))
