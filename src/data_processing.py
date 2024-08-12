@@ -45,9 +45,27 @@ def generate_ground_truth(label, gesture_type, total_classes):
     start_idx = gesture_indices[0]
     end_idx = gesture_indices[-1]
 
-    # 生成平滑的 ground truth，使用高斯過濾
-    ground_truth[start_idx:end_idx+1, gesture_type] = gaussian_filter1d(
-        np.ones(end_idx - start_idx + 1), sigma=(end_idx - start_idx) / 6)
+    # # 生成平滑的 ground truth，使用高斯過濾
+    # ground_truth[start_idx:end_idx+1, gesture_type] = gaussian_filter1d(
+    #     np.ones(end_idx - start_idx + 1), sigma=(end_idx - start_idx) / 6)
+
+    # # 背景分數是 1 減去手勢分數
+    # ground_truth[:, 0] = 1 - ground_truth[:, gesture_type]
+
+
+
+
+    # 生成對稱的高斯分佈，從 0 上升到 1 再下降到 0
+    length = end_idx - start_idx + 1
+    center = length // 2
+    x = np.arange(0, length) - center
+    sigma = length / 6
+    gaussian_curve = np.exp(-0.5 * (x / sigma) ** 2)
+
+    # 正規化高斯曲線，使其最大值為 1
+    gaussian_curve /= gaussian_curve.max()
+
+    ground_truth[start_idx:end_idx+1, gesture_type] = gaussian_curve
 
     # 背景分數是 1 減去手勢分數
     ground_truth[:, 0] = 1 - ground_truth[:, gesture_type]
@@ -80,12 +98,12 @@ def process_data():
                 all_ground_truths.append(ground_truth)
 
                 # 驗證生成的 ground truth
-                plt.figure(figsize=(10, 2))
-                plt.title(f'Ground Truth for {gesture_type} in {file_name}')
-                plt.plot(ground_truth[:, gesture_idx], label=gesture_type)
-                plt.plot(ground_truth[:, 0], label='background')
-                plt.legend()
-                plt.show()
+                # plt.figure(figsize=(10, 2))
+                # plt.title(f'Ground Truth for {gesture_type} in {file_name}')
+                # plt.plot(ground_truth[:, gesture_idx], label=gesture_type)
+                # plt.plot(ground_truth[:, 0], label='background')
+                # plt.legend()
+                # plt.show()
 
     # 將所有處理後的數據儲存成一個檔案
     np.savez(PROCESSED_DATA_FILE, features=np.array(all_features), labels=np.array(all_labels), ground_truths=np.array(all_ground_truths))
