@@ -21,7 +21,7 @@ else:
     print("未檢測到 GPU，將使用 CPU 進行運算。")
 
 # 設定數據和參數
-DATA_DIR = 'data/processed_data/processed_data.npz'  # 已處理數據的路徑
+DATA_DIR = 'data/processed_data/processed_data_cdf.npz'  # 已處理數據的路徑
 WINDOW_SIZE = 40  # 滑動窗口大小
 STEP_SIZE = 1  # 滑動窗口的步長
 BATCH_SIZE = 32  # 批次大小

@@ -51,7 +51,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 載入處理後的數據
-npz_file_path = 'data/processed_data/processed_data.npz'
+npz_file_path = 'data/processed_data/processed_data_cdf.npz'
 data = np.load(npz_file_path)
 
 # 取得數據集
