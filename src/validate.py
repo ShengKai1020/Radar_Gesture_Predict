@@ -1,85 +1,63 @@
 import os
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
 import matplotlib.pyplot as plt
-from tensorflow.keras.models import load_model
-import h5py
 
-# 模型和數據路徑
-MODEL_PATH = 'output/models/3d_cnn_model_20240813_131109.h5'
-TEST_DATA_DIR = 'data/Stone'  # 測試資料夾，可以換成其他手勢資料夾
+# 设置文件路径
+DATA_FILE = 'data/processed_data/processed_data.npz'  # 数据文件路径
+MODEL_FILE = 'output/models/3d_cnn_model_20240815_145251.h5'  # 模型文件路径
+WINDOW_SIZE = 40  # 滑动窗口大小
+STEP_SIZE = 1  # 滑动窗口步长
 
-WINDOW_SIZE = 40  # 與訓練時一致的滑動窗口大小
-STEP_SIZE = 1  # 與訓練時一致的滑動窗口步長
-
-def load_h5_file(file_path):
-    """
-    載入 .h5 檔案並提取 DS1 數據
-    Args:
-        file_path (str): h5檔案路徑
-    Returns:
-        np.array: DS1 數據
-    """
-    with h5py.File(file_path, 'r') as f:
-        ds1 = np.array(f['DS1'])
-    return ds1
-
-def preprocess_data(ds1):
-    """
-    預處理數據，應用滑動窗口
-    Args:
-        ds1 (np.array): 載入的數據
-    Returns:
-        np.array: 處理後的數據
-    """
-    X = []
-    for start in range(0, ds1.shape[-1] - WINDOW_SIZE + 1, STEP_SIZE):
-        end = start + WINDOW_SIZE
-        X.append(ds1[:, :, :, start:end])
-    X = np.array(X)
-    X = X.astype('float32') / 255.0  # 標準化
-    return X
-
-def visualize_prediction(predictions, file_name):
-    """
-    視覺化預測結果
-    Args:
-        predictions (np.array): 預測結果
-        file_name (str): 測試檔案名稱
-    """
-    plt.figure(figsize=(10, 6))
-    for i in range(predictions.shape[1]):
-        plt.plot(predictions[:, i], label=f'Class {i}')
-    plt.title(f'Predictions for {file_name}')
-    plt.xlabel('Frame')
-    plt.ylabel('Probability')
-    plt.legend()
-    plt.show()
+# 加载模型
+model = tf.keras.models.load_model(MODEL_FILE)
+print(f'模型已加載：{MODEL_FILE}')
 
 def validate_model():
     """
-    加載模型並對測試數據進行驗證
+    通过滑动窗口方法对数据进行预测并生成混淆矩阵。
     """
-    # 加載模型
-    model = load_model(MODEL_PATH)
-    print(f"模型已加載：{MODEL_PATH}")
+    # 加载数据
+    data = np.load(DATA_FILE)
+    X = data['features']
+    y = data['labels']
 
-    # 處理測試資料夾內的所有 .h5 檔案
-    for file_name in os.listdir(TEST_DATA_DIR):
-        if file_name.endswith('.h5'):
-            file_path = os.path.join(TEST_DATA_DIR, file_name)
-            
-            # 加載數據
-            ds1 = load_h5_file(file_path)
+    # 将数据分成滑动窗口
+    X_windows = []
+    y_true = []
 
-            # 預處理數據
-            X_test = preprocess_data(ds1)
+    for i in range(X.shape[0]):
+        for start in range(0, X.shape[-1] - WINDOW_SIZE + 1, STEP_SIZE):
+            end = start + WINDOW_SIZE
+            X_windows.append(X[i, :, :, :, start:end])
+            y_true.append(y[i, end - 1])  # 取每个滑动窗口的最后一帧作为真实标签
 
-            # 預測
-            predictions = model.predict(X_test)
+    X_windows = np.array(X_windows)
 
-            # 可視化結果
-            visualize_prediction(predictions, file_name)
+    # 验证集滑动窗口
+    y_pred = []
+    
+    for i in range(X_windows.shape[0]):
+        window_pred = model.predict(np.expand_dims(X_windows[i], axis=0))
+        y_pred.append(np.argmax(window_pred, axis=-1))
+
+    y_pred = np.array(y_pred).flatten()
+    y_true = np.array(y_true).flatten()
+
+    # 打印分类报告
+    print("Classification Report:")
+    print(classification_report(y_true, y_pred, target_names=['Background', 'Stone', 'Swing_Left', 'Swing_Right']))
+
+    # 绘制混淆矩阵
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Background', 'Stone', 'Swing_Left', 'Swing_Right'], yticklabels=['Background', 'Stone', 'Swing_Left', 'Swing_Right'])
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    plt.show()
 
 if __name__ == '__main__':
     validate_model()
