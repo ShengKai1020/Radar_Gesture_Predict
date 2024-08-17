@@ -99,7 +99,9 @@ def build_3d_cnn_model(input_shape, num_classes, learning_rate=1e-4):
 
     # 使用較低的學習率
     optimizer = Adam(learning_rate=learning_rate)
-    model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['accuracy'])
+    # model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    
     return model
 
 def train_model(X, y):

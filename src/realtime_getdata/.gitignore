@@ -1,0 +1,5 @@
+.idea/
+/OutputFile/
+/venv/
+build/
+__pycache__/

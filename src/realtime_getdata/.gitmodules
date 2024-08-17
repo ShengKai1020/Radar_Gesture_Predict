@@ -1,0 +1,6 @@
+[submodule "KKT_Module"]
+	path = KKT_Module
+url=http://10.10.68.133/KKT_Python_Module/KKT_Module
+[submodule "Library"]
+	path = Library
+url=http://10.10.68.133/KKT_Python_Module/Library

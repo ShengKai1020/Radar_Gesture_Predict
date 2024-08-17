@@ -14,7 +14,7 @@ ground_truths = data['ground_truths']
 features = features.astype('float32') / 255.0
 
 # 載入訓練好的模型
-model_path = 'output/models/3d_cnn_model_20240817_181331.h5'  # 修改為你的模型路徑
+model_path = 'output/models/3d_cnn_model_20240817_185529.h5'  # 修改為你的模型路徑
 model = load_model(model_path)
 
 # 打印數據集的資料型態和意思

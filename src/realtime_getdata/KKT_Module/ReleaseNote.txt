@@ -1,0 +1,5 @@
+1. remove libinstall.py
+2. move module FiniteReceiveMachine to dir KKT_Module
+3. Append package "QtObject" for QT Widgets.
+3. Append package "Updater".
+4. Move module ModeWindow, qt_obj to package QtObject
