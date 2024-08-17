@@ -166,3 +166,4 @@ cython_debug/
 processed_data.npz
 processed_data_cdf.npz
 
+data/

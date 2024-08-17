@@ -22,17 +22,20 @@ else:
 
 # 設定數據和參數
 DATA_DIR = 'data/processed_data/processed_data_new.npz'  # 已處理數據的路徑
-WINDOW_SIZE = 40  # 滑動窗口大小
+WINDOW_SIZE = 30  # 滑動窗口大小
 STEP_SIZE = 1  # 滑動窗口的步長
 BATCH_SIZE = 32  # 批次大小
 EPOCHS = 20  # 訓練的回合數
-NUM_CLASSES = 4  # 手勢類別數量
+NUM_CLASSES = 3  # 手勢類別數量
 
 # 設定模型保存和輸出目錄
 MODEL_SAVE_PATH = "output/models"
 CURVE_SAVE_PATH = "output/curves"
 LOG_DIR = 'logs/training_logs'
 timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time()))
+
+# 定義手勢類型
+gesture_types = ['background', 'forward', 'right']
 
 def load_data():
     """
@@ -56,8 +59,10 @@ def load_data():
         ground_truth = ground_truths[i]
         for start in range(0, feature.shape[-1] - WINDOW_SIZE + 1, STEP_SIZE):
             end = start + WINDOW_SIZE
+            mid = start + WINDOW_SIZE // 2  # 取中間位置的 frame
+
             X.append(feature[:, :, :, start:end])
-            y.append(ground_truth[end - 1])  # 使用滑動窗口最後一個frame的ground_truth作為標籤
+            y.append(ground_truth[mid])  # 使用滑動窗口中間的frame的ground_truth作為標籤
 
     X = np.array(X)
     y = np.array(y)
@@ -94,7 +99,6 @@ def build_3d_cnn_model(input_shape, num_classes, learning_rate=1e-4):
 
     # 使用較低的學習率
     optimizer = Adam(learning_rate=learning_rate)
-    # model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['accuracy'])
     return model
 
@@ -106,7 +110,7 @@ def train_model(X, y):
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # 獲取輸入形狀和類別數量
-    input_shape = X_train.shape[1:]  # (2, 32, 32, 40)
+    input_shape = X_train.shape[1:]  # (2, 32, 32, 30)
     num_classes = y_train.shape[-1]  # 類別數量
 
     # 構建和編譯模型
