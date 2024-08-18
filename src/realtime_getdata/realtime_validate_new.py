@@ -49,7 +49,21 @@ def startLoop():
         if res is None:
             continue
 
+        # print(f"res type: {type(res)}")  # 輸出 res 的型態
+        # print(f"res shape: {res.shape}")
+        # print(f"res content: {res}")  # 輸出 res 的內容
+
         res = list(res)  # 將 tuple 轉換為 list 以進行修改
+
+        # res = list(res)  # 將 tuple 轉換為 list 以進行修改
+
+        # 打印 res 的類型和每個元素的形狀
+        print(f"res type: {type(res)}")
+        for i, arr in enumerate(res):
+            if isinstance(arr, np.ndarray):  # 確保元素是 numpy array
+                print(f"Shape of res[{i}]: {arr.shape}")
+            else:
+                print(f"res[{i}] is not a numpy array, it is of type {type(arr)}")
         
         # 將新數據插入 buffer 中，並進行預測
         buffer = np.roll(buffer, shift=-1, axis=-1)  # 將 buffer 左移，丟棄最舊的幀
