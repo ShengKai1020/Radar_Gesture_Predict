@@ -16,26 +16,6 @@ buffer = np.zeros((2, 32, 32, BUFFER_SIZE), dtype=np.float32)  # 初始化 buffe
 model_path = 'output/models/3d_cnn_model_20240817_213956.h5'  # 修改為你的模型路徑
 model = load_model(model_path)
 
-def standardize_feature_map(feature_map):
-    """
-    標準化 feature map 的數據，使其均值為0，標準差為1
-    Args:
-        feature_map (np.array): 原始 feature map 數據，形狀為 (32, 32) 或 (2, 32, 32)
-    Returns:
-        np.array: 標準化後的 feature map 數據
-    """
-    if feature_map.ndim == 2:  # 如果是 (32, 32)
-        mean = np.mean(feature_map, keepdims=True)  # 計算均值
-        std = np.std(feature_map, keepdims=True)    # 計算標準差
-    elif feature_map.ndim == 3:  # 如果是 (2, 32, 32)
-        mean = np.mean(feature_map, axis=(1, 2), keepdims=True)  # 計算每個frame的均值
-        std = np.std(feature_map, axis=(1, 2), keepdims=True)    # 計算每個frame的標準差
-    else:
-        raise ValueError("feature_map 維度不符合預期")
-
-    standardized_map = (feature_map - mean) / (std + 1e-6)  # 避免除以0的情況
-    return standardized_map
-
 def connect():
     """
     連接裝置並重置硬體設定
@@ -71,13 +51,9 @@ def startLoop():
 
         res = list(res)  # 將 tuple 轉換為 list 以進行修改
         
-        # 標準化新數據
-        res[0] = standardize_feature_map(res[0])  # 標準化 RDI map
-        res[1] = standardize_feature_map(res[1])  # 標準化 PHD map
-        
         # 將新數據插入 buffer 中，並進行預測
         buffer = np.roll(buffer, shift=-1, axis=-1)  # 將 buffer 左移，丟棄最舊的幀
-        buffer[..., -1] = res  # 將新幀放入 buffer 的最後位置
+        buffer[..., -1] = res[0]  # 將新幀放入 buffer 的最後位置
         
         # 當 buffer 填滿時進行預測
         if buffer.shape[-1] == WINDOW_SIZE:
@@ -88,8 +64,21 @@ def startLoop():
             
             predictions = model.predict(window_feature)[0]  # 獲取預測結果
             
-            # 輸出分類概率
-            print(f'預測結果: background: {predictions[0]:.4f}, forward: {predictions[1]:.4f}, right: {predictions[2]:.4f}')
+            # 格式化輸出結果
+            background_prob = predictions[0]
+            forward_prob = predictions[1]
+            right_prob = predictions[2]
+
+            if forward_prob > 0.5:
+                output = f"預測結果為forward: background: {background_prob:.2f}, forward: {forward_prob:.2f}, right: {right_prob:.2f}"
+                print(output)
+            elif right_prob > 0.5:
+                output = f"預測結果為right: background: {background_prob:.2f}, forward: {forward_prob:.2f}, right: {right_prob:.2f}"
+                print(output)
+            else:
+                output = f"預測結果為background: background: {background_prob:.2f}, forward: {forward_prob:.2f}, right: {right_prob:.2f}"
+
+            # print(output)  # 輸出結果
 
 def main():
     """
